@@ -6,7 +6,7 @@ CREATE TABLE clicks (
     clicked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     ip_address TEXT,
     user_agent TEXT,
-    referrer TEXT
+    referrer TEXT -- This line was likely missing before
 );
 
 CREATE INDEX idx_clicks_link_id ON clicks(link_id);

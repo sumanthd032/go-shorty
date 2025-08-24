@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gorilla/sessions"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/sumanthd032/go-shorty/internal/middleware"
 	"github.com/sumanthd032/go-shorty/internal/repositories/db"
 	"github.com/sumanthd032/go-shorty/internal/services"
@@ -39,7 +41,17 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.service.Register(r.Context(), req.Email, req.Password)
 	if err != nil {
-		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+		// --- FIX: Check for a specific database error ---
+		var pgErr *pgconn.PgError
+		// Error code '23505' is for unique_violation in PostgreSQL.
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			http.Error(w, `{"error":"Email address already exists"}`, http.StatusConflict) // 409 Conflict
+			return
+		}
+		// --- END FIX ---
+
+		// For all other errors, return a generic 500.
+		http.Error(w, `{"error":"Could not create user"}`, http.StatusInternalServerError)
 		return
 	}
 
