@@ -15,14 +15,11 @@ type ServerConfig struct {
 	Port int `mapstructure:"port"`
 }
 
-// Add this new struct
 type DatabaseConfig struct {
 	DSN string `mapstructure:"dsn"`
 }
 
-// ... rest of the file is the same
 func LoadConfig() (config Config, err error) {
-    // ... no changes needed here, Viper will automatically pick up the new section
 	viper.AddConfigPath(".")
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")

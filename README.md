@@ -2,7 +2,7 @@
 
 Go-Shorty is a full-featured, high-performance URL shortener built with Go and a modern, reliable tech stack. It provides a clean API, a fast server-rendered UI, and a scalable architecture designed for production use. This project serves as a comprehensive example of building a real-world web application, from initial design to containerized deployment.
 
-## ✨ Features
+## Features
 - **Short Link Creation:** Generate random short links or create custom aliases.
 - **User Accounts:** Secure user registration and session-based login. Users can only manage their own links.
 - **Click Tracking & Analytics:** Asynchronously tracks every click, recording IP, User-Agent, and referrer. A dedicated analytics page displays total clicks per link.
@@ -10,7 +10,7 @@ Go-Shorty is a full-featured, high-performance URL shortener built with Go and a
 - **Background Processing:** A dedicated worker process handles click ingestion, ensuring the user-facing application is never slowed down by analytics processing.
 - **Modern UI:** A clean, responsive user interface built with Tailwind CSS and vanilla JavaScript.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Category   | Technology / Library |
 |------------|-----------------------|
@@ -24,54 +24,16 @@ Go-Shorty is a full-featured, high-performance URL shortener built with Go and a
 | Config     | Viper                |
 | DevOps     | Docker, Docker Compose, GitHub Actions |
 
-## 🏗️ High-Level Architecture
+## High-Level Architecture
 
-```plaintext
-                               |         User's          |
-                               |   Browser / API Client  |
-                               +-----------+-------------+
-                                           |
-                                           | (HTTPS)
-                                           v
-+-----------------------------------------------------------------------------------+
-|                                     Your Server                                   |
-| +----------------------------------+ +------------------------------------------+ |
-| |        Gateway / HTTP Server     | |              Workers (Async)             | |
-| | (Go with Chi Router)             | |                                          | |
-| |                                  | | +-----------------+                      | |
-| | Handles:                         | | |  Click Processor  |                      | |
-| |  - UI Requests (HTML/HTMX)       | | +-----------------+                      | |
-| |  - API Requests (JSON)           | | |  Link Health      |                      | |
-| |  - Redirects (/short-alias)      | | +-----------------+                      | |
-| +----------------+-----------------+ +----------+-------------------------------+ |
-|                  |                              ^                                 |
-|                  | (Function Calls)             | (Jobs)                          |
-|                  v                              |                                 |
-| +----------------+-----------------+ +----------+-------------------------------+ |
-| |       Core Service Layer         | |            Message Queue / Cache           | |
-| | (Business Logic in Go)           | |            (Redis)                         | |
-| |                                  | |                                          | |
-| |  - Alias Generation              | |  - Caches hot links for fast redirects   | |
-| |  - Validation & Security         | |  - Queues click data for processing      | |
-| |  - User Authentication           | |  - Handles rate limiting                 | |
-| +----------------+-----------------+ +------------------------------------------+ |
-|                  |                                                               |
-|                  | (SQL Queries via sqlc)                                        |
-|                  v                                                               |
-| +----------------+-------------------------------------------------------------+ |
-| |                         Data Store (PostgreSQL)                                | |
-| |                                                                                | |
-| |  - Stores users, links, API keys, click data, etc.                             | |
-| +--------------------------------------------------------------------------------+ |
-+-----------------------------------------------------------------------------------+
-```
+![architecture](/architecture.png)
 
 - **Go Server:** Serves UI, JSON API, and handles redirects by publishing click events.
 - **Go Worker:** Listens for Redis stream events and stores click analytics in PostgreSQL.
 - **Redis:** High-speed cache and message queue.
 - **PostgreSQL:** Primary data store.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Docker
