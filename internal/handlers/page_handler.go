@@ -4,9 +4,10 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+
+	"github.com/jackc/pgx/v5/pgtype" 
 	"github.com/sumanthd032/go-shorty/internal/middleware"
 	"github.com/sumanthd032/go-shorty/internal/repositories/db"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type PageHandler struct {
@@ -15,7 +16,6 @@ type PageHandler struct {
 }
 
 func NewPageHandler(queries *db.Queries) *PageHandler {
-	// Parse all templates on startup
 	tmpls, err := template.ParseGlob("templates/*.html")
 	if err != nil {
 		log.Fatalf("could not parse templates: %v", err)
@@ -39,18 +39,23 @@ func (h *PageHandler) ShowLoginPage(w http.ResponseWriter, r *http.Request) {
 func (h *PageHandler) ShowDashboard(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
 	if !ok {
-		// This should theoretically not happen if middleware is correct
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	
-	// We need a new DB query to get links by user ID
-	links, err := h.queries.GetLinksByUserID(r.Context(), pgtype.Int8{Int64: userID, Valid: true})
+
+	// FIX: Convert the int64 to the required pgtype.Int8
+	pgUserID := pgtype.Int8{
+		Int64: userID,
+		Valid: true, // Mark it as not-null
+	}
+
+	// Use the new pgUserID variable in the function call
+	links, err := h.queries.GetLinksByUserID(r.Context(), pgUserID)
 	if err != nil {
 		http.Error(w, "Could not fetch links", http.StatusInternalServerError)
 		return
 	}
-	
+
 	data := map[string]interface{}{
 		"Links": links,
 	}
