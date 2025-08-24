@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jackc/pgx/v5/pgtype" 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/sumanthd032/go-shorty/internal/middleware"
 	"github.com/sumanthd032/go-shorty/internal/repositories/db"
 )
@@ -43,13 +43,11 @@ func (h *PageHandler) ShowDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// FIX: Convert the int64 to the required pgtype.Int8
 	pgUserID := pgtype.Int8{
 		Int64: userID,
-		Valid: true, // Mark it as not-null
+		Valid: true,
 	}
 
-	// Use the new pgUserID variable in the function call
 	links, err := h.queries.GetLinksByUserID(r.Context(), pgUserID)
 	if err != nil {
 		http.Error(w, "Could not fetch links", http.StatusInternalServerError)
@@ -60,5 +58,9 @@ func (h *PageHandler) ShowDashboard(w http.ResponseWriter, r *http.Request) {
 		"Links": links,
 	}
 
-	h.templates["dashboard.html"].ExecuteTemplate(w, "layout.html", data)
+	err = h.templates["dashboard.html"].ExecuteTemplate(w, "layout.html", data)
+	if err != nil {
+		log.Printf("ERROR: Failed to execute dashboard template: %v", err)
+		http.Error(w, "Failed to render page", 500)
+	}
 }

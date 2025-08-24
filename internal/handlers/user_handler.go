@@ -3,17 +3,21 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+
 	"github.com/gorilla/sessions"
+	"github.com/sumanthd032/go-shorty/internal/middleware"
+	"github.com/sumanthd032/go-shorty/internal/repositories/db"
 	"github.com/sumanthd032/go-shorty/internal/services"
 )
 
 type UserHandler struct {
-	service     *services.UserService
+	service      *services.UserService
 	sessionStore sessions.Store
+	queries      *db.Queries // Add queries to fetch user details
 }
 
-func NewUserHandler(s *services.UserService, store sessions.Store) *UserHandler {
-	return &UserHandler{service: s, sessionStore: store}
+func NewUserHandler(s *services.UserService, store sessions.Store, queries *db.Queries) *UserHandler {
+	return &UserHandler{service: s, sessionStore: store, queries: queries}
 }
 
 type UserRequest struct {
@@ -21,60 +25,74 @@ type UserRequest struct {
 	Password string `json:"password"`
 }
 
+// A response struct to avoid sending the password hash
+type UserResponse struct {
+	ID    int64  `json:"id"`
+	Email string `json:"email"`
+}
+
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req UserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
 		return
 	}
 
 	user, err := h.service.Register(r.Context(), req.Email, req.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
 		return
 	}
 
+	userResp := UserResponse{ID: user.ID, Email: user.Email}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(user) // Note: Don't send password hash in a real app
+	json.NewEncoder(w).Encode(userResp)
 }
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
-    // Check content type to decide how to parse
-	var email, password string
-	contentType := r.Header.Get("Content-Type")
-
-	if contentType == "application/json" {
-		var req UserRequest
-		json.NewDecoder(r.Body).Decode(&req)
-		email = req.Email
-		password = req.Password
-	} else {
-		r.ParseForm()
-		email = r.FormValue("email")
-		password = r.FormValue("password")
+	var req UserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		return
 	}
-    
-    user, err := h.service.Login(r.Context(), email, password)
-	
+
+	user, err := h.service.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		http.Error(w, `{"error":"Invalid credentials"}`, http.StatusUnauthorized)
 		return
 	}
 
 	session, _ := h.sessionStore.Get(r, "auth-session")
 	session.Values["user_id"] = user.ID
 	if err := session.Save(r, w); err != nil {
-		http.Error(w, "Could not save session", http.StatusInternalServerError)
+		http.Error(w, `{"error":"Could not save session"}`, http.StatusInternalServerError)
 		return
 	}
-    
-    // If the request was from a form, redirect to the dashboard
-    if contentType != "application/json" {
-        http.Redirect(w, r, "/", http.StatusSeeOther)
-        return
-    }
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Logged in successfully"))
+	json.NewEncoder(w).Encode(map[string]string{"message": "Logged in successfully"})
+}
+
+// GetCurrentUser is the handler for the GET /api/users/me endpoint.
+func (h *UserHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+	if !ok {
+		// This case should ideally not be reached due to the auth middleware
+		http.Error(w, `{"error":"User not found in context"}`, http.StatusInternalServerError)
+		return
+	}
+
+	// We need a new query to get user by ID
+	user, err := h.queries.GetUserByID(r.Context(), userID)
+	if err != nil {
+		http.Error(w, `{"error":"User not found"}`, http.StatusNotFound)
+		return
+	}
+
+	userResp := UserResponse{ID: user.ID, Email: user.Email}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(userResp)
 }

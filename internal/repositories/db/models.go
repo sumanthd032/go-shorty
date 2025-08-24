@@ -8,6 +8,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Click struct {
+	ID        int64
+	LinkID    int64
+	ClickedAt pgtype.Timestamptz
+	IpAddress pgtype.Text
+	UserAgent pgtype.Text
+	Referrer  pgtype.Text
+}
+
 type Link struct {
 	ID           int64
 	Alias        string
