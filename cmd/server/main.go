@@ -9,15 +9,17 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/gorilla/sessions"
 	"github.com/jackc/pgx/v5"
-	"github.com/sumanthd032/go-shorty/internal/config"
 	"github.com/redis/go-redis/v9"
+	"github.com/sumanthd032/go-shorty/internal/config"
 	"github.com/sumanthd032/go-shorty/internal/handlers"
+	authMiddleware "github.com/sumanthd032/go-shorty/internal/middleware" 
 	"github.com/sumanthd032/go-shorty/internal/repositories/db"
 	"github.com/sumanthd032/go-shorty/internal/services"
-	"github.com/gorilla/sessions"
-	"github.com/sumanthd032/go-shorty/internal/middleware"
 )
+
 func main() {
 	cfg, err := config.LoadConfig()
 	if err != nil {
@@ -37,32 +39,30 @@ func main() {
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
-	// Ping the Redis server to check the connection.
 	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
 		log.Fatalf("Unable to connect to Redis: %v", err)
 	}
 
 	// --- Session Store ---
-	// The key should be from config and be 32 or 64 bytes long.
 	sessionStore := sessions.NewCookieStore([]byte(cfg.Auth.SessionKey))
 
 	// --- Dependency Injection ---
 	queries := db.New(conn)
-	// Pass the Redis client to the service layer.
 	linkService := services.NewLinkService(queries, rdb)
 	userService := services.NewUserService(queries)
 	linkHandler := handlers.NewLinkHandler(linkService)
 	userHandler := handlers.NewUserHandler(userService, sessionStore)
 
 	// --- Middleware ---
-	authMiddleware := middleware.Auth(sessionStore)
-
+	// Calling our custom middleware from the renamed package import
+	requireAuth := authMiddleware.Auth(sessionStore)
 
 	// --- Server Setup ---
 	r := chi.NewRouter()
+
+	// FIX: These now correctly refer to the chi/v5/middleware package
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-
 
 	// Public routes
 	r.Get("/{alias}", linkHandler.Redirect)
@@ -71,7 +71,7 @@ func main() {
 
 	// Protected routes
 	r.Group(func(r chi.Router) {
-		r.Use(authMiddleware)
+		r.Use(requireAuth) // Use our auth middleware
 		r.Post("/api/links", linkHandler.CreateLink)
 	})
 
