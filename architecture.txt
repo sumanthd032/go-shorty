@@ -1,0 +1,38 @@
++-------------------------+
+                               |         User's          |
+                               |   Browser / API Client  |
+                               +-----------+-------------+
+                                           |
+                                           | (HTTPS)
+                                           v
++-----------------------------------------------------------------------------------+
+|                                     Your Server                                   |
+| +----------------------------------+ +------------------------------------------+ |
+| |        Gateway / HTTP Server     | |              Workers (Async)             | |
+| | (Go with Chi Router)             | |                                          | |
+| |                                  | | +-----------------+                      | |
+| | Handles:                         | | |  Click Processor  |                      | |
+| |  - UI Requests (HTML/HTMX)       | | +-----------------+                      | |
+| |  - API Requests (JSON)           | | |  Link Health      |                      | |
+| |  - Redirects (/short-alias)      | | +-----------------+                      | |
+| +----------------+-----------------+ +----------+-------------------------------+ |
+|                  |                              ^                                 |
+|                  | (Function Calls)             | (Jobs)                          |
+|                  v                              |                                 |
+| +----------------+-----------------+ +----------+-------------------------------+ |
+| |       Core Service Layer         | |            Message Queue / Cache           | |
+| | (Business Logic in Go)           | |            (Redis)                         | |
+| |                                  | |                                          | |
+| |  - Alias Generation              | |  - Caches hot links for fast redirects   | |
+| |  - Validation & Security         | |  - Queues click data for processing      | |
+| |  - User Authentication           | |  - Handles rate limiting                 | |
+| +----------------+-----------------+ +------------------------------------------+ |
+|                  |                                                               |
+|                  | (SQL Queries via sqlc)                                        |
+|                  v                                                               |
+| +----------------+-------------------------------------------------------------+ |
+| |                         Data Store (PostgreSQL)                                | |
+| |                                                                                | |
+| |  - Stores users, links, API keys, click data, etc.                             | |
+| +--------------------------------------------------------------------------------+ |
++-----------------------------------------------------------------------------------+
