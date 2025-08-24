@@ -1,14 +1,15 @@
-
 server:
   port: 8080
 
 database:
-  dsn: "postgresql://user:password@localhost:5432/shortener?sslmode=disable"
+  # Use the service name 'postgres' as the host.
+  dsn: "postgresql://user:password@postgres:5432/shortener?sslmode=disable"
 
 redis:
-  addr: "localhost:6379"
-  password: "" # no password set
-  db: 0 # use default DB
+  # Use the service name 'redis' as the host.
+  addr: "redis:6379"
+  password: ""
+  db: 0
 
 auth:
-  session_key: "super-secret-key-change-in-production"
+  session_key: "n0yLf5N2vVZ2mQdnjZi8fU7GBYTMumep"

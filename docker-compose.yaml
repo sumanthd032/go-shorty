@@ -1,4 +1,3 @@
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -12,6 +11,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d shortener"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -19,6 +23,45 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Add our application server
+  server:
+    # 'build: .' tells docker-compose to build the image from the Dockerfile in the current directory.
+    build: .
+    container_name: go-shorty-server
+    # The command to run when this container starts.
+    command: /server
+    ports:
+      - "8080:8080"
+    # 'depends_on' ensures that postgres and redis are healthy before our server starts.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    # Mount the config file so we can change it without rebuilding the image.
+    volumes:
+      - ./config.yaml:/config.yaml
+
+  # Add our background worker
+  worker:
+    build: .
+    container_name: go-shorty-worker
+    command: /worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./config.yaml:/config.yaml
 
 volumes:
   postgres_data:
