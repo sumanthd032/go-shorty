@@ -84,28 +84,24 @@ Go-Shorty is a full-featured, high-performance URL shortener built with Go and a
 Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/go-shorty.git
+git clone https://github.com/sumanthd032/go-shorty.git
 cd go-shorty
 ```
 
 Configure the application:
-
-```bash
-cp config.example.yaml config.yaml
-```
 
 Edit `config.yaml` and set `session_key` to a long, random 32 or 64-character string.
 
 Build and run with Docker Compose:
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 Run database migrations:
 
 ```bash
-docker-compose exec server /goose -dir "migrations" postgres "postgresql://user:password@postgres:5432/shortener?sslmode=disable" up
+docker compose exec server /goose -dir "migrations" postgres "postgresql://user:password@postgres:5432/shortener?sslmode=disable" up
 ```
 
 ### Usage
@@ -114,5 +110,5 @@ docker-compose exec server /goose -dir "migrations" postgres "postgresql://user:
 - **Logs:** Check logs in the terminal where `docker-compose up` is running.
 - **Stop:** Press `Ctrl+C`. To remove data volumes:  
   ```bash
-  docker-compose down --volumes
+  docker compose down --volumes
   ```
