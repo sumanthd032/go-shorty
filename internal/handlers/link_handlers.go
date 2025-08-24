@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sumanthd032/go-shorty/internal/services"
+	"github.com/sumanthd032/go-shorty/internal/middleware"
 )
 
 // LinkHandler handles HTTP requests for links.
@@ -30,11 +31,19 @@ type CreateLinkRequest struct {
 
 // CreateLink is the handler for the POST /api/links endpoint.
 func (h *LinkHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
+	if !ok {
+		http.Error(w, "User not authenticated", http.StatusInternalServerError)
+		return
+	}
+
 	var req CreateLinkRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	
 
 	if req.URL == "" {
 		http.Error(w, "URL is required", http.StatusBadRequest)
@@ -44,6 +53,7 @@ func (h *LinkHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
 	params := services.CreateLinkParams{
 		OriginalURL: req.URL,
 		CustomAlias: req.Alias,
+		UserID:      userID, // Pass the user ID
 	}
 
 	link, err := h.service.Create(r.Context(), params)

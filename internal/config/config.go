@@ -7,7 +7,8 @@ import (
 type Config struct {
 	Server   ServerConfig
 	Database DatabaseConfig
-	Redis    RedisConfig // Add this line
+	Redis    RedisConfig 
+	Auth     AuthConfig
 }
 
 type ServerConfig struct {
@@ -41,4 +42,8 @@ type RedisConfig struct {
 	Addr     string `mapstructure:"addr"`
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
+}
+
+type AuthConfig struct {
+	SessionKey string `mapstructure:"session_key"`
 }

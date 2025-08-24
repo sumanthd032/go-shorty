@@ -2,9 +2,10 @@
 -- name: CreateLink :one
 INSERT INTO links (
     alias,
-    original_url
+    original_url,
+    user_id 
 ) VALUES (
-    $1, $2
+    $1, $2, $3 
 )
 RETURNING *;
 

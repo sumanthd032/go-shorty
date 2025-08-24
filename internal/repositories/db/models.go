@@ -16,4 +16,12 @@ type Link struct {
 	ExpiresAt    pgtype.Timestamptz
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+	UserID       pgtype.Int8
+}
+
+type User struct {
+	ID           int64
+	Email        string
+	PasswordHash []byte
+	CreatedAt    pgtype.Timestamptz
 }

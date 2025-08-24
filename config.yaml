@@ -9,3 +9,6 @@ redis:
   addr: "localhost:6379"
   password: "" # no password set
   db: 0 # use default DB
+
+auth:
+  session_key: "super-secret-key-change-in-production"

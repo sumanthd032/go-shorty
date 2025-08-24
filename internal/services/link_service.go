@@ -13,6 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/sumanthd032/go-shorty/internal/repositories/db"
 	"github.com/sumanthd032/go-shorty/pkg/utils"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var ErrAliasExists = errors.New("custom alias already exists")
@@ -34,6 +35,7 @@ func NewLinkService(queries *db.Queries, cache *redis.Client) *LinkService {
 type CreateLinkParams struct {
 	OriginalURL  string
 	CustomAlias  string
+	UserID       int64
 }
 
 // Create handles the creation of a short link.
@@ -48,6 +50,7 @@ func (s *LinkService) Create(ctx context.Context, params CreateLinkParams) (db.L
 	createParams := db.CreateLinkParams{
 		Alias:       alias,
 		OriginalUrl: params.OriginalURL,
+		UserID:      pgtype.Int8{Int64: params.UserID, Valid: true},
 	}
 
 	link, err := s.queries.CreateLink(ctx, createParams)

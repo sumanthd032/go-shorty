@@ -9,13 +9,14 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/sumanthd032/go-shorty/internal/config"
 	"github.com/redis/go-redis/v9"
 	"github.com/sumanthd032/go-shorty/internal/handlers"
 	"github.com/sumanthd032/go-shorty/internal/repositories/db"
 	"github.com/sumanthd032/go-shorty/internal/services"
+	"github.com/gorilla/sessions"
+	"github.com/sumanthd032/go-shorty/internal/middleware"
 )
 func main() {
 	cfg, err := config.LoadConfig()
@@ -41,23 +42,38 @@ func main() {
 		log.Fatalf("Unable to connect to Redis: %v", err)
 	}
 
+	// --- Session Store ---
+	// The key should be from config and be 32 or 64 bytes long.
+	sessionStore := sessions.NewCookieStore([]byte(cfg.Auth.SessionKey))
+
 	// --- Dependency Injection ---
 	queries := db.New(conn)
 	// Pass the Redis client to the service layer.
 	linkService := services.NewLinkService(queries, rdb)
+	userService := services.NewUserService(queries)
 	linkHandler := handlers.NewLinkHandler(linkService)
+	userHandler := handlers.NewUserHandler(userService, sessionStore)
+
+	// --- Middleware ---
+	authMiddleware := middleware.Auth(sessionStore)
+
 
 	// --- Server Setup ---
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Route("/api", func(r chi.Router) {
-		r.Post("/links", linkHandler.CreateLink)
-	})
 
-	// Add the new redirect route at the root level.
+	// Public routes
 	r.Get("/{alias}", linkHandler.Redirect)
+	r.Post("/api/users/register", userHandler.Register)
+	r.Post("/api/users/login", userHandler.Login)
+
+	// Protected routes
+	r.Group(func(r chi.Router) {
+		r.Use(authMiddleware)
+		r.Post("/api/links", linkHandler.CreateLink)
+	})
 
 	port := fmt.Sprintf(":%d", cfg.Server.Port)
 	log.Printf("Server starting on port %s", port)
