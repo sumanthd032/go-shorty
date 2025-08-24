@@ -12,39 +12,40 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/sumanthd032/go-shorty/internal/config"
-	// Import the generated db package
+	// Import our new packages
+	"github.com/sumanthd032/go-shorty/internal/handlers"
 	"github.com/sumanthd032/go-shorty/internal/repositories/db"
+	"github.com/sumanthd032/go-shorty/internal/services"
 )
 
 func main() {
-	// 1. Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// 2. Connect to the database
-	// We use context.Background() as a default, empty context.
 	conn, err := pgx.Connect(context.Background(), cfg.Database.DSN)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)
 	}
-	// Defer closing the connection until the main function exits.
 	defer conn.Close(context.Background())
 
-	// 3. Create a new Querier instance from our generated code
+	// --- Dependency Injection ---
+	// We create our dependencies starting from the innermost layer (repository)
+	// and working our way out.
 	queries := db.New(conn)
+	linkService := services.NewLinkService(queries)
+	linkHandler := handlers.NewLinkHandler(linkService)
 
 	// --- Server Setup ---
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Welcome to Go-Shorty! DB connection successful."))
+	// Create a new router group for API endpoints
+	r.Route("/api", func(r chi.Router) {
+		r.Post("/links", linkHandler.CreateLink)
 	})
-
-    // Here we could pass `queries` to our handlers and services
 
 	port := fmt.Sprintf(":%d", cfg.Server.Port)
 	log.Printf("Server starting on port %s", port)
