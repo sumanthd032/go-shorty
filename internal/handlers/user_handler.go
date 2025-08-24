@@ -13,7 +13,7 @@ import (
 type UserHandler struct {
 	service      *services.UserService
 	sessionStore sessions.Store
-	queries      *db.Queries // Add queries to fetch user details
+	queries      *db.Queries
 }
 
 func NewUserHandler(s *services.UserService, store sessions.Store, queries *db.Queries) *UserHandler {
@@ -25,7 +25,6 @@ type UserRequest struct {
 	Password string `json:"password"`
 }
 
-// A response struct to avoid sending the password hash
 type UserResponse struct {
 	ID    int64  `json:"id"`
 	Email string `json:"email"`
@@ -75,16 +74,24 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Logged in successfully"})
 }
 
-// GetCurrentUser is the handler for the GET /api/users/me endpoint.
+func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	session, _ := h.sessionStore.Get(r, "auth-session")
+	session.Options.MaxAge = -1
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, `{"error":"Could not log out"}`, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Logged out successfully"})
+}
+
 func (h *UserHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
 	if !ok {
-		// This case should ideally not be reached due to the auth middleware
 		http.Error(w, `{"error":"User not found in context"}`, http.StatusInternalServerError)
 		return
 	}
 
-	// We need a new query to get user by ID
 	user, err := h.queries.GetUserByID(r.Context(), userID)
 	if err != nil {
 		http.Error(w, `{"error":"User not found"}`, http.StatusNotFound)

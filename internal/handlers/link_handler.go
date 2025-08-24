@@ -15,7 +15,6 @@ import (
 )
 
 // LinkResponse defines the JSON structure for a link returned by the API.
-// Using these `json:"..."` tags gives us full control over the API output.
 type LinkResponse struct {
 	ID          int64     `json:"id"`
 	Alias       string    `json:"alias"`
@@ -72,7 +71,6 @@ func (h *LinkHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert the database model to our API response model
 	apiLink := LinkResponse{
 		ID:          link.ID,
 		Alias:       link.Alias,
@@ -120,7 +118,6 @@ func (h *LinkHandler) GetUserLinks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert the slice of database links to a slice of API response links
 	apiLinks := make([]LinkResponse, 0, len(dbLinks))
 	for _, link := range dbLinks {
 		apiLinks = append(apiLinks, LinkResponse{

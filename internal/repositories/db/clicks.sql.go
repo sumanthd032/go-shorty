@@ -48,3 +48,53 @@ func (q *Queries) CreateClick(ctx context.Context, arg CreateClickParams) (Click
 	)
 	return i, err
 }
+
+const getLinkAnalytics = `-- name: GetLinkAnalytics :many
+SELECT
+    l.id,
+    l.alias,
+    l.original_url,
+    COUNT(c.id) AS total_clicks
+FROM
+    links l
+LEFT JOIN
+    clicks c ON l.id = c.link_id
+WHERE
+    l.user_id = $1
+GROUP BY
+    l.id
+ORDER BY
+    total_clicks DESC
+`
+
+type GetLinkAnalyticsRow struct {
+	ID          int64
+	Alias       string
+	OriginalUrl string
+	TotalClicks int64
+}
+
+func (q *Queries) GetLinkAnalytics(ctx context.Context, userID pgtype.Int8) ([]GetLinkAnalyticsRow, error) {
+	rows, err := q.db.Query(ctx, getLinkAnalytics, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLinkAnalyticsRow
+	for rows.Next() {
+		var i GetLinkAnalyticsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Alias,
+			&i.OriginalUrl,
+			&i.TotalClicks,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
