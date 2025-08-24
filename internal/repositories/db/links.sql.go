@@ -64,3 +64,38 @@ func (q *Queries) GetLinkByAlias(ctx context.Context, alias string) (Link, error
 	)
 	return i, err
 }
+
+const getLinksByUserID = `-- name: GetLinksByUserID :many
+SELECT id, alias, original_url, password_hash, expires_at, created_at, updated_at, user_id FROM links
+WHERE user_id = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetLinksByUserID(ctx context.Context, userID pgtype.Int8) ([]Link, error) {
+	rows, err := q.db.Query(ctx, getLinksByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Link
+	for rows.Next() {
+		var i Link
+		if err := rows.Scan(
+			&i.ID,
+			&i.Alias,
+			&i.OriginalUrl,
+			&i.PasswordHash,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

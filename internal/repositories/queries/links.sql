@@ -9,6 +9,11 @@ INSERT INTO links (
 )
 RETURNING *;
 
+-- name: GetLinksByUserID :many
+SELECT * FROM links
+WHERE user_id = $1
+ORDER BY created_at DESC;
+
 -- name: GetLinkByAlias :one
 SELECT * FROM links
 WHERE alias = $1 LIMIT 1;

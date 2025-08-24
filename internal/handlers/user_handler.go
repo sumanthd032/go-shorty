@@ -40,13 +40,23 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req UserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
+    // Check content type to decide how to parse
+	var email, password string
+	contentType := r.Header.Get("Content-Type")
 
-	user, err := h.service.Login(r.Context(), req.Email, req.Password)
+	if contentType == "application/json" {
+		var req UserRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		email = req.Email
+		password = req.Password
+	} else {
+		r.ParseForm()
+		email = r.FormValue("email")
+		password = r.FormValue("password")
+	}
+    
+    user, err := h.service.Login(r.Context(), email, password)
+	
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
@@ -58,6 +68,12 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Could not save session", http.StatusInternalServerError)
 		return
 	}
+    
+    // If the request was from a form, redirect to the dashboard
+    if contentType != "application/json" {
+        http.Redirect(w, r, "/", http.StatusSeeOther)
+        return
+    }
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Logged in successfully"))

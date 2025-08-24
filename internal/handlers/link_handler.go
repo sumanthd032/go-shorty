@@ -11,22 +11,58 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/sumanthd032/go-shorty/internal/services"
 	"github.com/sumanthd032/go-shorty/internal/middleware"
+	"html/template" 
+	
 )
 
 // LinkHandler handles HTTP requests for links.
 type LinkHandler struct {
 	service *services.LinkService
+	templates map[string]*template.Template 
 }
 
 // NewLinkHandler creates a new LinkHandler.
 func NewLinkHandler(s *services.LinkService) *LinkHandler {
-	return &LinkHandler{service: s}
+	tmpls, _ := template.ParseGlob("templates/*.html")
+	templatesMap := make(map[string]*template.Template)
+	for _, t := range tmpls.Templates() {
+		templatesMap[t.Name()] = t
+	}
+	return &LinkHandler{service: s, templates: templatesMap}
 }
+
 
 // CreateLinkRequest defines the expected JSON body for creating a link.
 type CreateLinkRequest struct {
 	URL   string `json:"url"`
 	Alias string `json:"alias,omitempty"` // omitempty means the field is optional
+}
+
+func (h *LinkHandler) CreateLinkFromUI(w http.ResponseWriter, r *http.Request) {
+	userID, _ := r.Context().Value(middleware.UserIDKey).(int64)
+
+	// We parse form data instead of JSON
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+	originalURL := r.FormValue("url")
+	customAlias := r.FormValue("alias")
+	
+	params := services.CreateLinkParams{
+		OriginalURL: originalURL,
+		CustomAlias: customAlias,
+		UserID:      userID,
+	}
+
+	link, err := h.service.Create(r.Context(), params)
+	if err != nil {
+		http.Error(w, "Could not create link", http.StatusInternalServerError)
+		return
+	}
+	
+	// Instead of sending JSON, we execute the link_row template with the new link data
+	h.templates["link_row.html"].Execute(w, link)
 }
 
 // CreateLink is the handler for the POST /api/links endpoint.

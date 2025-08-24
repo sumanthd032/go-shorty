@@ -52,28 +52,38 @@ func main() {
 	userService := services.NewUserService(queries)
 	linkHandler := handlers.NewLinkHandler(linkService)
 	userHandler := handlers.NewUserHandler(userService, sessionStore)
+	pageHandler := handlers.NewPageHandler(queries)
 
 	// --- Middleware ---
 	// Calling our custom middleware from the renamed package import
 	requireAuth := authMiddleware.Auth(sessionStore)
 
 	// --- Server Setup ---
-	r := chi.NewRouter()
+    r := chi.NewRouter()
+    r.Use(middleware.Logger)
+    r.Use(middleware.Recoverer)
 
-	// FIX: These now correctly refer to the chi/v5/middleware package
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-
-	// Public routes
-	r.Get("/{alias}", linkHandler.Redirect)
-	r.Post("/api/users/register", userHandler.Register)
-	r.Post("/api/users/login", userHandler.Login)
-
-	// Protected routes
-	r.Group(func(r chi.Router) {
-		r.Use(requireAuth) // Use our auth middleware
-		r.Post("/api/links", linkHandler.CreateLink)
+    // --- Page Routes ---
+    r.Get("/login", pageHandler.ShowLoginPage)
+    
+    // Group for routes that require authentication
+    r.Group(func(r chi.Router) {
+        r.Use(requireAuth)
+        r.Get("/", pageHandler.ShowDashboard)
+        // This is the new endpoint our HTMX form will post to
+        r.Post("/ui/links", linkHandler.CreateLinkFromUI)
+    })
+    
+    // --- API Routes (unchanged) ---
+    r.Post("/api/users/register", userHandler.Register)
+    r.Post("/api/users/login", userHandler.Login)
+    r.Group(func(r chi.Router) {
+		r.Use(requireAuth)
+		r.Post("/api/links", linkHandler.CreateLink) // The original API endpoint
 	})
+
+    // Public redirect route
+    r.Get("/{alias}", linkHandler.Redirect)
 
 	port := fmt.Sprintf(":%d", cfg.Server.Port)
 	log.Printf("Server starting on port %s", port)
