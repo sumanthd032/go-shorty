@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/sumanthd032/go-shorty/internal/services"
 )
 
@@ -59,4 +60,26 @@ func (h *LinkHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated) // 201 Created
 	json.NewEncoder(w).Encode(link)
+}
+
+func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
+	alias := chi.URLParam(r, "alias")
+	if alias == "" {
+		http.Error(w, "Alias is missing", http.StatusBadRequest)
+		return
+	}
+
+	originalURL, err := h.service.GetOriginalURL(r.Context(), alias)
+	if err != nil {
+		if errors.Is(err, services.ErrLinkNotFound) {
+			http.NotFound(w, r) // Renders a standard 404 page
+			return
+		}
+		log.Printf("Internal server error on redirect: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Perform the redirect
+	http.Redirect(w, r, originalURL, http.StatusFound) // 302 Found
 }

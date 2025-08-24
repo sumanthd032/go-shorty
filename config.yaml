@@ -1,7 +1,11 @@
+
 server:
   port: 8080
 
 database:
-  # This is a standard PostgreSQL connection string (DSN)
-  # Format: postgresql://user:password@host:port/dbname?sslmode=disable
   dsn: "postgresql://user:password@localhost:5432/shortener?sslmode=disable"
+
+redis:
+  addr: "localhost:6379"
+  password: "" # no password set
+  db: 0 # use default DB

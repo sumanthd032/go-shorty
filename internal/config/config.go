@@ -6,7 +6,8 @@ import (
 
 type Config struct {
 	Server   ServerConfig
-	Database DatabaseConfig // Add this line
+	Database DatabaseConfig
+	Redis    RedisConfig // Add this line
 }
 
 type ServerConfig struct {
@@ -34,4 +35,10 @@ func LoadConfig() (config Config, err error) {
 
 	err = viper.Unmarshal(&config)
 	return
+}
+
+type RedisConfig struct {
+	Addr     string `mapstructure:"addr"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
 }
