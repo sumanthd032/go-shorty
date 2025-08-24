@@ -1,0 +1,15 @@
+
+version: "2"
+sql:
+  - engine: "postgresql"
+    # Directory where we will write our SQL queries
+    queries: "internal/repositories/queries/"
+    # Directory where sqlc will generate the Go code
+    schema: "migrations/"
+    gen:
+      go:
+        # Path for the generated Go package
+        package: "db"
+        out: "internal/repositories/db"
+        # Enable sql.Null* types for nullable columns
+        sql_package: "pgx/v5"
