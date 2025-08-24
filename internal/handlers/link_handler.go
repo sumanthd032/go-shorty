@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -13,9 +14,19 @@ import (
 	"github.com/sumanthd032/go-shorty/internal/services"
 )
 
+// LinkResponse defines the JSON structure for a link returned by the API.
+// Using these `json:"..."` tags gives us full control over the API output.
+type LinkResponse struct {
+	ID          int64     `json:"id"`
+	Alias       string    `json:"alias"`
+	OriginalURL string    `json:"original_url"`
+	UserID      int64     `json:"user_id"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
 type LinkHandler struct {
 	service *services.LinkService
-	queries *db.Queries // Add queries to fetch links
+	queries *db.Queries
 }
 
 func NewLinkHandler(s *services.LinkService, queries *db.Queries) *LinkHandler {
@@ -61,9 +72,18 @@ func (h *LinkHandler) CreateLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Convert the database model to our API response model
+	apiLink := LinkResponse{
+		ID:          link.ID,
+		Alias:       link.Alias,
+		OriginalURL: link.OriginalUrl,
+		UserID:      link.UserID.Int64,
+		CreatedAt:   link.CreatedAt.Time,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(link)
+	json.NewEncoder(w).Encode(apiLink)
 }
 
 func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
@@ -87,7 +107,6 @@ func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, originalURL, http.StatusFound)
 }
 
-// GetUserLinks is the handler for the GET /api/links endpoint.
 func (h *LinkHandler) GetUserLinks(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(int64)
 	if !ok {
@@ -95,18 +114,25 @@ func (h *LinkHandler) GetUserLinks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	links, err := h.queries.GetLinksByUserID(r.Context(), pgtype.Int8{Int64: userID, Valid: true})
+	dbLinks, err := h.queries.GetLinksByUserID(r.Context(), pgtype.Int8{Int64: userID, Valid: true})
 	if err != nil {
 		http.Error(w, `{"error":"Could not fetch links"}`, http.StatusInternalServerError)
 		return
 	}
 
-	// Handle case where user has no links
-	if links == nil {
-		links = []db.Link{}
+	// Convert the slice of database links to a slice of API response links
+	apiLinks := make([]LinkResponse, 0, len(dbLinks))
+	for _, link := range dbLinks {
+		apiLinks = append(apiLinks, LinkResponse{
+			ID:          link.ID,
+			Alias:       link.Alias,
+			OriginalURL: link.OriginalUrl,
+			UserID:      link.UserID.Int64,
+			CreatedAt:   link.CreatedAt.Time,
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(links)
+	json.NewEncoder(w).Encode(apiLinks)
 }
