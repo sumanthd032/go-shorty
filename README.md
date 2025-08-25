@@ -8,7 +8,6 @@ Go-Shorty is a full-featured, high-performance URL shortener built with Go and a
 - **Click Tracking & Analytics:** Asynchronously tracks every click, recording IP, User-Agent, and referrer. A dedicated analytics page displays total clicks per link.
 - **High-Performance Redirects:** Uses Redis caching for millisecond-level redirect speeds on popular links.
 - **Background Processing:** A dedicated worker process handles click ingestion, ensuring the user-facing application is never slowed down by analytics processing.
-- **Modern UI:** A clean, responsive user interface built with Tailwind CSS and vanilla JavaScript.
 
 ## Tech Stack
 
